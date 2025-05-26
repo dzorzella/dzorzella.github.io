@@ -1,0 +1,20 @@
+baseURL: ""
+languageCode: it-it
+title: Zorzella Davide
+theme: PaperMod
+caches:
+  images:
+    dir: :cacheDir/images
+
+params:
+  homeInfoParams:
+    Title: Hello there
+    Content: This is my personal portfolio, where I will publish CTF walkthroughs, personal projects and relative documentation
+
+  socialIcons: # optional
+    - name: "Github"
+      url: "https://github.com/dzorzella"
+    - name: "Linkedin"
+      url: "https://www.linkedin.com/in/davide-zorzella/"
+    - name: "Hack The Box"
+      url: "https://app.hackthebox.com/profile/478598"
