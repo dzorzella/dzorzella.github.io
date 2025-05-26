@@ -10,7 +10,7 @@ params:
   homeInfoParams:
     Title: Hello there
     Content: This is my personal portfolio, where I will publish CTF walkthroughs, personal projects and relative documentation
-
+  ShowReadingTime: true
   socialIcons: # optional
     - name: "Github"
       url: "https://github.com/dzorzella"
