@@ -11,6 +11,9 @@ params:
     Title: Hello there
     Content: This is my personal portfolio, where I will publish CTF walkthroughs, personal projects and relative documentation
   ShowReadingTime: true
+  cover:
+    linkFullImages: true
+  ShowBreadCrumbs: true
   socialIcons: # optional
     - name: "Github"
       url: "https://github.com/dzorzella"
@@ -18,3 +21,19 @@ params:
       url: "https://www.linkedin.com/in/davide-zorzella/"
     - name: "Hack The Box"
       url: "https://app.hackthebox.com/profile/478598"
+
+menu:
+  main:
+    - identifier: categories
+      name: Categories
+      url: /categories/
+      weight: 10
+    - identifier: tags
+      name: Tags
+      url: /tags/
+      weight: 20
+    - identifier: archives
+      name: Archives
+      url: /archives/
+      weight: 30
+      
