@@ -7,8 +7,8 @@ categories: ["CTF"]
 
 cover:
   image: "kali-layers.png"
-  alt: "<alt text>"
-  caption: "<text>"
+  alt: "kali"
+  caption: "kali"
 ---
 
 Find your way home
