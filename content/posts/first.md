@@ -4,6 +4,11 @@ draft: false
 title: 'Hello World!'
 author: Zorzella Davide
 categories: ["CTF"]
+
+cover:
+  image: "kali-layers.png"
+  alt: "<alt text>"
+  caption: "<text>"
 ---
 
 Find your way home
