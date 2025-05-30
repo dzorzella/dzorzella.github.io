@@ -18,13 +18,13 @@ Find your way home
 Add the host to the list of known hosts
 
 ```
-$ sudo -- sh -c -e "echo '127.0.0.1   home' >> /etc/hosts"
+sudo -- sh -c -e "echo '127.0.0.1   home' >> /etc/hosts"
 ```
 
 Test reachability with local hosts file
 
 ```
-$ ping home
+ping home
 ```
 
 ```
@@ -44,7 +44,7 @@ rtt min/avg/max/mdev = 0.074/0.083/0.092/0.007 ms
 Check the content of the web page
 
 ```
-$ curl http://home/
+curl http://home/
 ```
 
 ```
