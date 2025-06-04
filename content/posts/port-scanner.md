@@ -60,5 +60,19 @@ This script performs a basic TCP port scan on a given host and port range. It ch
 ```
 This will check ports 8000 to 8010 on localhost (127.0.0.1)
 
+```
+2025-06-04 09:20:10 Port 8000 is open on localhost
+2025-06-04 09:20:10 Port 8001 is closed on localhost
+2025-06-04 09:20:10 Port 8002 is closed on localhost
+2025-06-04 09:20:10 Port 8003 is closed on localhost
+2025-06-04 09:20:10 Port 8004 is closed on localhost
+2025-06-04 09:20:10 Port 8005 is closed on localhost
+2025-06-04 09:20:10 Port 8006 is closed on localhost
+2025-06-04 09:20:10 Port 8007 is open on localhost
+2025-06-04 09:20:10 Port 8008 is closed on localhost
+2025-06-04 09:20:10 Port 8009 is closed on localhost
+2025-06-04 09:20:10 Port 8010 is closed on localhost
+```
+
 ## Why I wrote this
 While this is not as robust or stealthy as dedicated tools like nmap, I created this script as a lightweight, dependency-free way to check port availability during internal network diagnostics. It’s a great example of how powerful Bash can be for quick automation tasks.
