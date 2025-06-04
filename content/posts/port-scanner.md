@@ -56,7 +56,7 @@ This script performs a basic TCP port scan on a given host and port range. It ch
 ## Example usage
 
 ```bash
-python3 ./main.sh localhost 8000-8010
+./main.sh localhost 8000-8010
 ```
 This will check ports 8000 to 8010 on localhost (127.0.0.1)
 
