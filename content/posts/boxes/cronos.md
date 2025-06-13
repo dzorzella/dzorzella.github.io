@@ -15,7 +15,7 @@ cover:
 
 IP: 10.10.10.13
 
-CronOS focuses mainly on different vectors for enumeration and also emphasises the risks associated with adding world-writable files to the root crontab. This machine also includes an introductory-level SQL injection vulnerability.
+Cronos focuses mainly on different vectors for enumeration and also emphasises the risks associated with adding world-writable files to the root crontab. This machine also includes an introductory-level SQL injection vulnerability.
 
 # Enumeration
 
