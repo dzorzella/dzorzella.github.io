@@ -8,9 +8,9 @@ tags: ["cron jobs", "Zone transfer"]
 categories: ["CTF"]
 
 cover:
-  image: ""
-  alt: ""
-  caption: ""
+  image: "/cronos-pwn.png"
+  alt: "cronos pwn"
+  caption: "cronos pwn"
 ---
 
 IP: 10.10.10.13
@@ -160,12 +160,12 @@ Content-type: text/html; charset=UTF-8
 
 Great, this payload redirects us to the welcome page. Let's use burp to repeat this process via browser.
 
-![Welcome page](/Screenshot%202025-03-01%20141527.png) 
+![Welcome page](/cronos-1.png#center) 
 
 ## Executing command
 The page proposes 2 commands: traceroute and ping.
 
-![commands](/Screenshot%202025-03-01%20174536.png)
+![commands](/cronos-2.png#center)
 
 # Exploitation
 
