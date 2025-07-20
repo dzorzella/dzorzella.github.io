@@ -25,6 +25,9 @@ port=${2:?"missing arg 2 for port. Accepted values: [port] | [start-end]"}
 if [[ $port =~ ([0-9]+)-([0-9]+) ]]; then
   start=${BASH_REMATCH[1]}
   end=${BASH_REMATCH[2]}
+else
+  start=$port
+  end=$port
 fi
 
 log_message() {
