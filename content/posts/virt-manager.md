@@ -1,6 +1,6 @@
 ---
 date: '2025-07-31T15:58:05+02:00'
-draft: false
+draft: true
 title: 'Linux Virtualization'
 author: Zorzella Davide
 
