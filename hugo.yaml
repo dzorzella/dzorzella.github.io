@@ -9,7 +9,7 @@ caches:
 params:
   homeInfoParams:
     Title: Hello there
-    Content: This is my personal portfolio, where I will publish CTF walkthroughs, AI content, personal projects and relative documentation
+    Content: This is my personal portfolio, where I will publish OT Security projects, CTF walkthroughs, AI content, other than personal projects and relative documentation
   ShowReadingTime: true
   cover:
     linkFullImages: true
