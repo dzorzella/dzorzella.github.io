@@ -1,6 +1,6 @@
 ---
 date: '2025-07-31T15:58:05+02:00'
-draft: true
+draft: false
 title: 'Linux Virtualization'
 author: Zorzella Davide
 
@@ -60,34 +60,79 @@ sudo systemctl enable libvirtd
 
 # Mount external drive on startup
 
-Mount external drive with kali-linux-2025.1c-qemu-amd64.qcow2 file
+This is required only if you have the virtual storage file .qcow2 on an external drive like me. 
 
-/home/$USER/startup.sh
+## Step 1: Identify the drive
+
+Open a terminal and run:
 
 ```bash
-mkdir /media/davide/DATA
-mount -t ntfs /dev/sdb1 /media/davide/DATA -o umask=0000,gid=1000,uid=1000
+lsblk
 ```
 
-make it root file
+Find your external drive (e.g., /dev/sdb1) and note its UUID:
+
+```bash
+sudo blkid
+```
+
+Example output:
+
+```
+/dev/sdb1: LABEL="DATA" BLOCK_SIZE="512" UUID="6274Exxxxxxxxxxx" TYPE="ntfs" PARTLABEL="Basic data partition" PARTUUID="25373248-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+```
+
+## Step 2: Create a mount point
+
+Choose a directory where the drive will be mounted
+
+```bash
+sudo mkdir /mnt/$USER/DATA
+```
+
+## Step 3: Automatically mount with fstab
+
+Open the configuration file `/etc/fstab`, which defines how and where disk partitions, storage devices, and remote filesystems should be mounted into the filesystem at boot time
+
+```bash
+sudo nano /etc/fstab
+```
+
+Add the following line at the end, using the `UUID` previously discovered. While it is also possible to use /dev/sdb1, this value is known to change on reboot in case of storage configuration changes.
+
+```
+UUID=6274Exxxxxxxxxxx /mnt/$USER/DATA ntfs defaults,nofail 0 2
+```
+
+Now reboot, the storage should be now automatically mounted on you filesystem under `/mnt/$USER/DATA`
+
+## Different approach, same result
+
+This second method was my default one for automatically mounting storage disks at boot time, before I discovered that built-in fstab functionality was available on Linux systems.
+
+Create a file `/home/$USER/startup.sh` with the following content
+
+```bash
+mkdir /media/$USER/DATA
+mount -t ntfs /dev/sdb1 /media/$USER/DATA -o umask=0000,gid=1000,uid=1000
+```
+
+Make it root file, since mounting an external drive requires root privileges 
 
 ```bash
 sudo chown root:root startup.sh
 sudo chmod 700 startup.sh
 ```
 
-check ownership and permission
+Check ownership and permission
 
 ```
 -rwx------ 1 root root 100 lug 30 18:12 startup.sh
 ```
 
-Execute on every startup
+To execute the mount command on every startup, add the line `@reboot /home/$USER/startup.sh` at the end of the crontab configuration file
 
 ```bash
 sudo crontab -e
-```
-
-```
-@reboot /home/davide/startup.sh
 ```
