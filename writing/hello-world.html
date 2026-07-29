@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hello World - Davide Zorzella</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="signature">Davide Z.</div>
+  <div class="theme-pill">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambia tema">
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  <main>
+    <article class="article-content">
+      <img src="../assets/writing/kali-layers.png" alt="kali" style="margin-bottom: 48px;">
+
+      <h2>Find your way home</h2>
+
+      <h2>Enumeration</h2>
+      <p>
+        Aggiungiamo l'host alla lista delle known hosts:
+      </p>
+      <pre><code>sudo -- sh -c -e "echo '127.0.0.1   home' >> /etc/hosts"</code></pre>
+
+      <p>
+        Testiamo la raggiungibilità con il file hosts locale:
+      </p>
+      <pre><code>ping home</code></pre>
+      <pre><code>PING home (127.0.0.1) 56(84) bytes of data.
+64 bytes from localhost (127.0.0.1): icmp_seq=1 ttl=64 time=0.077 ms
+64 bytes from localhost (127.0.0.1): icmp_seq=2 ttl=64 time=0.092 ms
+64 bytes from localhost (127.0.0.1): icmp_seq=3 ttl=64 time=0.089 ms
+64 bytes from localhost (127.0.0.1): icmp_seq=4 ttl=64 time=0.074 ms
+
+--- home ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss
+rtt min/avg/max/mdev = 0.074/0.083/0.092/0.007 ms</code></pre>
+
+      <h2>Exploitation</h2>
+      <p>
+        Controlliamo il contenuto della pagina web:
+      </p>
+      <pre><code>curl http://home/</code></pre>
+      <pre><code>&lt;!DOCTYPE HTML&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt;Home&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        flag{Y0u_Ar3_w3lc0mE}
+    &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+      <p>
+        Abbiamo ottenuto la flag!
+      </p>
+      <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.875rem;">
+        <a href="../" style="color: var(--text-secondary);">&larr; Torna alla home</a>
+      </p>
+    </article>
+  </main>
+  <footer>
+    <p>Ultimo aggiornamento: Luglio 2026</p>
+  </footer>
+  <script>
+    (function(){var t=document.getElementById('theme-toggle'),h=document.documentElement,s=localStorage.getItem('cv-theme');function st(t){h.setAttribute('data-theme',t);localStorage.setItem('cv-theme',t);}if(s)st(s);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)st('dark');t.addEventListener('click',function(){var c=h.getAttribute('data-theme');st(c==='dark'?'light':'dark');});})();(function(){var n='Davide Zorzella',e=document.getElementById('typing-name');if(!e)return;if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){e.textContent=n;return;}var i=0;function t(){if(i<n.length){e.textContent+=n.charAt(i);i++;setTimeout(t,80+Math.random()*60);}}setTimeout(t,400);})();
+  </script>
+  <script>
+    (function(){var c=document.getElementById('particles');if(!c)return;var x=c.getContext('2d'),p=[],w,h,md=120,a;function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;}function createParticles(){p=[];var n=Math.min(Math.floor((w*h)/18000),80);for(var i=0;i<n;i++)p.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:1.5+Math.random()*1.5});}function gc(){var d=document.documentElement.getAttribute('data-theme')==='dark';return d?'rgba(60,60,60,':'rgba(180,180,180,';}function gl(){var d=document.documentElement.getAttribute('data-theme')==='dark';return d?'rgba(255,255,255,':'rgba(0,0,0,';}function draw(){x.clearRect(0,0,w,h);var dc=gc(),gl2=gl();for(var i=0;i<p.length;i++){var v=p[i];v.x+=v.vx;v.y+=v.vy;if(v.x<0||v.x>w)v.vx*=-1;if(v.y<0||v.y>h)v.vy*=-1;x.beginPath();x.arc(v.x,v.y,v.r,0,Math.PI*2);x.fillStyle=dc+'0.5)';x.fill();for(var j=i+1;j<p.length;j++){var v2=p[j],dx=v.x-v2.x,dy=v.y-v2.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<md){x.beginPath();x.moveTo(v.x,v.y);x.lineTo(v2.x,v2.y);x.strokeStyle=gl2+(0.08*(1-dist/md))+')';x.lineWidth=.5;x.stroke();}}}a=requestAnimationFrame(draw);}window.addEventListener('resize',function(){resize();createParticles();});resize();createParticles();draw();document.addEventListener('visibilitychange',function(){if(document.hidden)cancelAnimationFrame(a);else draw();});})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Port Scanner con Bash - Davide Zorzella</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="signature">Davide Z.</div>
+  <div class="theme-pill">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambia tema">
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  <main>
+    <article class="article-content">
+      <img src="../assets/writing/port-scanner.jpeg" alt="port-scanner - AI generated image" style="margin-bottom: 48px;">
+
+      <h2>Port Scanning con Bash: uno script leggero per la diagnostica di rete</h2>
+      <p>
+        Quando si lavora con le reti, a volte serve un modo rapido per verificare se un range di porte è aperto su un dato host. Strumenti come nmap sono potenti e ricchi di funzionalità, ma possono essere eccessivi per compiti semplici o non disponibili in ambienti minimal. Ecco dove uno script Bash leggero come questo diventa utile.
+      </p>
+
+      <h2>Il codice</h2>
+      <pre><code>#!/bin/bash
+
+host=${1:?"missing arg 1 for host"}
+port=${2:?"missing arg 2 for port. Accepted values: [port] | [start-end]"}
+
+if [[ $port =~ ([0-9]+)-([0-9]+) ]]; then
+  start=${BASH_REMATCH[1]}
+  end=${BASH_REMATCH[2]}
+else
+  start=$port
+  end=$port
+fi
+
+log_message() {
+  echo "`date \"+%Y-%m-%d %H:%M:%S\"` $1" | tee -a log
+}
+
+for p in $(seq $start $end);
+do
+    if timeout 1 bash -c "&lt;/dev/tcp/$host/$p" 2&gt;/dev/null; then
+      log_message "Port $p is open on $host"
+    else
+      log_message "Port $p is closed on $host"
+    fi
+done</code></pre>
+
+      <p>
+        Il progetto GitHub è disponibile <a href="https://github.com/dzorzella/port-scanner" target="_blank" rel="noopener">qui</a>.
+      </p>
+
+      <h2>Cosa fa</h2>
+      <p>
+        Questo script esegue un port scan TCP di base su un dato host e range di porte. Verifica ogni porta nel range per vedere se è aperta e registra il risultato con un timestamp.
+      </p>
+
+      <h2>Funzionalità chiave</h2>
+      <ul>
+        <li><strong>Validazione degli argomenti</strong> — Assicura che host e range di porte siano forniti</li>
+        <li><strong>Regex Matching</strong> — Estrae le porte di start e end da un range come 20-25</li>
+        <li><strong>Verifica TCP</strong> — Usa il pseudo-device /dev/tcp di Bash per tentare la connessione</li>
+        <li><strong>Gestione del timeout</strong> — Previene blocchi su porte non responsive</li>
+        <li><strong>Logging</strong> — Output dei risultati su console e file di log con timestamp</li>
+      </ul>
+
+      <h2>Uso di esempio</h2>
+      <pre><code>./main.sh localhost 8000-8010</code></pre>
+      <p>
+        Questo controllerà le porte 8000-8010 su localhost (127.0.0.1):
+      </p>
+      <pre><code>2025-06-04 09:20:10 Port 8000 is open on localhost
+2025-06-04 09:20:10 Port 8001 is closed on localhost
+2025-06-04 09:20:10 Port 8002 is closed on localhost
+2025-06-04 09:20:10 Port 8003 is closed on localhost
+2025-06-04 09:20:10 Port 8004 is closed on localhost
+2025-06-04 09:20:10 Port 8005 is closed on localhost
+2025-06-04 09:20:10 Port 8006 is closed on localhost
+2025-06-04 09:20:10 Port 8007 is open on localhost
+2025-06-04 09:20:10 Port 8008 is closed on localhost
+2025-06-04 09:20:10 Port 8009 is closed on localhost
+2025-06-04 09:20:10 Port 8010 is closed on localhost</code></pre>
+
+      <h2>Perché l'ho scritto</h2>
+      <p>
+        Sebbene non sia robusto o stealth come strumenti dedicati come nmap, ho creato questo script come modo leggero e senza dipendenze per verificare la disponibilità delle porte durante la diagnostica di rete interna. È un ottimo esempio di quanto Bash possa essere potente per compiti rapidi di automazione.
+      </p>
+      <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.875rem;">
+        <a href="../" style="color: var(--text-secondary);">&larr; Torna alla home</a>
+      </p>
+    </article>
+  </main>
+  <footer>
+    <p>Ultimo aggiornamento: Luglio 2026</p>
+  </footer>
+  <script>
+    (function() {
+      var toggle = document.getElementById('theme-toggle');
+      var html = document.documentElement;
+      var stored = localStorage.getItem('cv-theme');
+      function setTheme(theme) { html.setAttribute('data-theme', theme); localStorage.setItem('cv-theme', theme); }
+      if (stored) { setTheme(stored); }
+      else if (window.matchMedia('(prefers-color-scheme: dark)').matches) { setTheme('dark'); }
+      toggle.addEventListener('click', function() { var c = html.getAttribute('data-theme'); setTheme(c === 'dark' ? 'light' : 'dark'); });
+    })();
+    (function() {
+      var name = 'Davide Zorzella', el = document.getElementById('typing-name');
+      if (!el) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = name; return; }
+      var i = 0;
+      function type() { if (i < name.length) { el.textContent += name.charAt(i); i++; setTimeout(type, 80 + Math.random() * 60); } }
+      setTimeout(type, 400);
+    })();
+  </script>
+  <script>
+    (function() {
+      var canvas = document.getElementById('particles');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d'), particles = [], w, h, maxDist = 120, animId;
+      function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+      function createParticles() {
+        particles = [];
+        var count = Math.min(Math.floor((w * h) / 18000), 80);
+        for (var i = 0; i < count; i++) particles.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4, r: 1.5 + Math.random() * 1.5 });
+      }
+      function getParticleColor() { var d = document.documentElement.getAttribute('data-theme') === 'dark'; return d ? 'rgba(60,60,60,' : 'rgba(180,180,180,'; }
+      function getLineColor() { var d = document.documentElement.getAttribute('data-theme') === 'dark'; return d ? 'rgba(255,255,255,' : 'rgba(0,0,0,'; }
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        var dc = getParticleColor(), lc = getLineColor();
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i]; p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > w) p.vx *= -1; if (p.y < 0 || p.y > h) p.vy *= -1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fillStyle = dc + '0.5)'; ctx.fill();
+          for (var j = i + 1; j < particles.length; j++) {
+            var p2 = particles[j], dx = p.x - p2.x, dy = p.y - p2.y, dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < maxDist) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.strokeStyle = lc + (0.08*(1-dist/maxDist)) + ')'; ctx.lineWidth = 0.5; ctx.stroke(); }
+          }
+        }
+        animId = requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize', function() { resize(); createParticles(); });
+      resize(); createParticles(); draw();
+      document.addEventListener('visibilitychange', function() { if (document.hidden) cancelAnimationFrame(animId); else draw(); });
+    })();
+  </script>
+</body>
+</html>

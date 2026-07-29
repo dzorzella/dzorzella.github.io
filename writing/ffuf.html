@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ffuf - Web Fuzzer - Davide Zorzella</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="signature">Davide Z.</div>
+  <div class="theme-pill">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambia tema">
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  <main>
+    <article class="article-content">
+      <img src="../assets/writing/ffuf.png" alt="ffuf" style="margin-bottom: 48px;">
+
+      <h2>Cos'è Ffuf</h2>
+      <p>
+        <strong>Ffuf (Fuzz Faster U Fool)</strong> è un web fuzzer veloce e flessibile scritto in Go. È principalmente utilizzato per scoprire risorse nascoste sui server web, come directory, file e virtual host.
+      </p>
+
+      <blockquote class="note">
+        <p>Nota: nelle wordlist si notano spesso commenti di copyright all'inizio, che possono essere considerati parte della wordlist e creare clutter nei risultati. Usare il flag <code>-ic</code> in ffuf per escludere queste righe.</p>
+      </blockquote>
+
+      <blockquote class="note">
+        <p>Nota: per filtrare i risultati per dimensione della risposta in Ffuf, usare l'opzione <code>-fs</code> (filter size). Questo permette di escludere risposte che corrispondono a una dimensione specifica.</p>
+      </blockquote>
+
+      <h2>Fuzzing dei subdomini pubblici</h2>
+      <p>
+        Questa tecnica permette di identificare subdomini pubblicamente accessibili associati a un dominio principale. Usando una wordlist di nomi di subdomini comuni, ffuf effettua richieste DNS per ogni voce, sostituendo dinamicamente il placeholder FUZZ. Utile per scoprire endpoint nascosti, ambienti di test, panel di amministrazione o servizi non documentati.
+      </p>
+      <pre><code>ffuf -w /opt/useful/seclists/Discovery/DNS/subdomains-top1million-5000.txt:FUZZ -u http://FUZZ.$DOMAIN$:$PORT</code></pre>
+
+      <h2>Enumerazione dei Virtual Host</h2>
+      <p>
+        Questa tecnica sfrutta la funzionalità di virtual hosting dei server web per identificare virtual host configurati ma non documentati. ffuf invia richieste HTTP modificando l'header Host con valori da una wordlist, cercando risposte diverse che indicano virtual host attivi. Particolarmente utile in ambienti dove più siti condividono lo stesso IP.
+      </p>
+      <pre><code>ffuf -u http://$DOMAIN:$PORT -H "Host: FUZZ.$DOMAIN" -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-20000.txt</code></pre>
+
+      <h2>Page Fuzzing</h2>
+      <p>
+        Il page fuzzing è una tecnica core di web reconnaissance per scoprire risorse nascoste o non linked su un server web. Testando sistematicamente diversi path e nomi di file, questo metodo aiuta a scoprire directory, script e file non direttamente accessibili dalla navigazione del sito.
+      </p>
+
+      <h3>Extension Fuzzing</h3>
+      <p>
+        Questa tecnica si concentra sul scoprire file nascosti o non elencati fuzzando le estensioni comuni. Appendendo valori da una wordlist a un path noto, ffuf tenta di identificare file accessibili come backup, codice sorgente o file di configurazione.
+      </p>
+      <pre><code>ffuf -w /usr/share/seclists/Discovery/Web-Content/web-extensions.txt:FUZZ -u http://$DOMAIN:$PORT/indexFUZZ</code></pre>
+
+      <h3>Recursive Page Fuzzing</h3>
+      <p>
+        Il recursive page fuzzing mira a enumerare path e directory accessibili su un server web. Usando una wordlist di nomi comuni di directory e file, ffuf esplora ricorsivamente il target, eventualmente appendendo estensioni come .php o .phps.
+      </p>
+      <pre><code>ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-small.txt:FUZZ -u http://$DOMAIN:$PORT/FUZZ -ic -recursion -recursion-depth 3 -e ".php,.phps" -v -fs xxx</code></pre>
+
+      <h2>Directory Fuzzing</h2>
+      <p>
+        Il directory fuzzing è una tecnica per scoprire directory nascoste o non elencate su un server web. Inviando richieste HTTP con nomi di directory comuni da una wordlist, aiuta a identificare aree del sito non linkate o visibili attraverso l'interfaccia utente.
+      </p>
+      <pre><code>ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -u http://$DOMAIN:$PORT/FUZZ -ic -recursion -recursion-depth 3 -v</code></pre>
+
+      <h2>Parametri aggiuntivi</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Flag</th>
+            <th>Descrizione</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>-H</code></td><td>Aggiungi headers (es. <code>-H "Cookie: sessionid=12345"</code>)</td></tr>
+          <tr><td><code>-X</code></td><td>Metodo HTTP (GET, POST, ecc.)</td></tr>
+          <tr><td><code>-d</code></td><td>Dati POST (es. <code>-d "username=test&amp;password=FUZZ"</code>)</td></tr>
+          <tr><td><code>-t</code></td><td>Numero di thread concorrenti</td></tr>
+          <tr><td><code>-o</code></td><td>Output su file in vari formati (csv, json, html)</td></tr>
+          <tr><td><code>-mc</code></td><td>Match per status code HTTP</td></tr>
+          <tr><td><code>-fs</code></td><td>Filter per dimensione risposta</td></tr>
+          <tr><td><code>-recursion -recursion-depth x</code></td><td>Fuzzing ricorsivo</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Parameter Fuzzing</h2>
+      <p>
+        Il parameter fuzzing è una tecnica per scoprire parametri nascosti o non documentati che un'applicazione web può accettare. Questi parametri possono influenzare il comportamento dell'applicazione, rivelare dati sensibili o esporre vulnerabilità potenziali.
+      </p>
+
+      <h3>GET Parameter Fuzzing</h3>
+      <p>
+        Questo metodo mira ai parametri della query string nelle URL. ffuf sostituisce il placeholder FUZZ con nomi di parametri potenziali da una wordlist.
+      </p>
+      <pre><code>ffuf -w /opt/useful/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ -u http://$DOMAIN:$PORT/?FUZZ=key -fs xxx</code></pre>
+
+      <h3>POST Parameter Fuzzing</h3>
+      <p>
+        Simile al GET fuzzing, questa tecnica si concentra sulle richieste POST. Iniettando nomi di parametri nel body della richiesta, ffuf può scoprire logica backend o campi form non esposti nel frontend.
+      </p>
+      <pre><code>ffuf -w /usr/share/seclists/Discovery/Web-Content/burp-parameter-names.txt:FUZZ -u http://$DOMAIN:$PORT/admin.php -X POST -d "FUZZ=key" -H "Content-Type: application/x-www-form-urlencoded" -fs xxx</code></pre>
+
+      <h3>Value Fuzzing</h3>
+      <p>
+        Il value fuzzing testa come un parametro noto (es. id) si comporta con valori diversi. Utile per identificare vulnerabilità IDOR (Insecure Direct Object Reference), percorsi di privilege escalation o problemi di input validation.
+      </p>
+      <pre><code>ffuf -w ids.txt:FUZZ -u http://$DOMAIN:$PORT/admin.php -X POST -H 'Content-type: application/x-www-form-urlencoded' -d 'id=FUZZ' -fs xxx</code></pre>
+      <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.875rem;">
+        <a href="../" style="color: var(--text-secondary);">&larr; Torna alla home</a>
+      </p>
+    </article>
+  </main>
+  <footer>
+    <p>Ultimo aggiornamento: Luglio 2026</p>
+  </footer>
+  <script>
+    (function() {
+      var toggle = document.getElementById('theme-toggle'), html = document.documentElement, stored = localStorage.getItem('cv-theme');
+      function setTheme(t) { html.setAttribute('data-theme', t); localStorage.setItem('cv-theme', t); }
+      if (stored) setTheme(stored);
+      else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
+      toggle.addEventListener('click', function() { var c = html.getAttribute('data-theme'); setTheme(c === 'dark' ? 'light' : 'dark'); });
+    })();
+    (function() {
+      var n = 'Davide Zorzella', e = document.getElementById('typing-name');
+      if (!e) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { e.textContent = n; return; }
+      var i = 0;
+      function t() { if (i < n.length) { e.textContent += n.charAt(i); i++; setTimeout(t, 80 + Math.random() * 60); } }
+      setTimeout(t, 400);
+    })();
+  </script>
+  <script>
+    (function() {
+      var c = document.getElementById('particles');
+      if (!c) return;
+      var x = c.getContext('2d'), p = [], w, h, md = 120, a;
+      function resize() { w = c.width = window.innerWidth; h = c.height = window.innerHeight; }
+      function createParticles() {
+        p = []; var n = Math.min(Math.floor((w*h)/18000), 80);
+        for (var i = 0; i < n; i++) p.push({ x: Math.random()*w, y: Math.random()*h, vx: (Math.random()-.5)*.4, vy: (Math.random()-.5)*.4, r: 1.5+Math.random()*1.5 });
+      }
+      function gc() { var d = document.documentElement.getAttribute('data-theme')==='dark'; return d ? 'rgba(60,60,60,' : 'rgba(180,180,180,'; }
+      function gl() { var d = document.documentElement.getAttribute('data-theme')==='dark'; return d ? 'rgba(255,255,255,' : 'rgba(0,0,0,'; }
+      function draw() {
+        x.clearRect(0,0,w,h); var dc=gc(), gl2=gl();
+        for (var i=0;i&lt;p.length;i++) { var v=p[i]; v.x+=v.vx; v.y+=v.vy; if(v.x&lt;0||v.x&gt;w) v.vx*=-1; if(v.y&lt;0||v.y&gt;h) v.vy*=-1;
+          x.beginPath(); x.arc(v.x,v.y,v.r,0,Math.PI*2); x.fillStyle=dc+'0.5)'; x.fill();
+          for (var j=i+1;j&lt;p.length;j++) { var v2=p[j], dx=v.x-v2.x, dy=v.y-v2.y, dist=Math.sqrt(dx*dx+dy*dy);
+            if(dist&lt;md) { x.beginPath(); x.moveTo(v.x,v.y); x.lineTo(v2.x,v2.y); x.strokeStyle=gl2+(0.08*(1-dist/md))+')'; x.lineWidth=.5; x.stroke(); }
+          }
+        } a=requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize', function(){resize();createParticles();});
+      resize(); createParticles(); draw();
+      document.addEventListener('visibilitychange', function(){if(document.hidden)cancelAnimationFrame(a);else draw();});
+    })();
+  </script>
+</body>
+</html>
