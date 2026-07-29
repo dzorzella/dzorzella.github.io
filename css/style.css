@@ -230,20 +230,6 @@ h2 {
   letter-spacing: -0.02em;
   margin-bottom: 8px;
   color: var(--text);
-  min-height: 2.5rem;
-}
-
-.typing-cursor {
-  display: inline-block;
-  color: var(--text-secondary);
-  animation: blink 0.8s step-end infinite;
-  margin-left: 2px;
-  font-weight: 300;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
 }
 
 .hero-tagline {
