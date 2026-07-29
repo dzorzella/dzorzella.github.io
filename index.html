@@ -31,7 +31,7 @@
       <div class="hero-photo">
         <img src="assets/photo.jpg" alt="Davide Zorzella">
       </div>
-      <h1><span id="typing-name"></span><span class="typing-cursor">|</span></h1>
+      <h1>Davide Zorzella</h1>
       <p class="hero-tagline">I do AI & CyberSecurity</p>
       <p class="hero-role">Application Security - AI - Penetration Test</p>
       <p class="hero-location">Monticelli d'Ongina (PC), Italia</p>
@@ -329,27 +329,6 @@
       });
     })();
 
-    // Typing animation
-    (function() {
-      const name = 'Davide Zorzella';
-      const el = document.getElementById('typing-name');
-      if (!el) return;
-
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        el.textContent = name;
-        return;
-      }
-
-      let i = 0;
-      function type() {
-        if (i < name.length) {
-          el.textContent += name.charAt(i);
-          i++;
-          setTimeout(type, 80 + Math.random() * 60);
-        }
-      }
-      setTimeout(type, 400);
-    })();
   </script>
 
   <script>
@@ -442,6 +421,100 @@
           draw();
         }
       });
+    })();
+  </script>
+
+  <script>
+    (function() {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      var PRINTABLE = '!\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~';
+
+      function randomStr(len) {
+        var s = '';
+        for (var i = 0; i < len; i++) {
+          s += PRINTABLE.charAt(Math.floor(Math.random() * PRINTABLE.length));
+        }
+        return s;
+      }
+
+      function decryptElement(el) {
+        var original = el.getAttribute('data-plaintext') || el.textContent;
+        el.setAttribute('data-plaintext', original);
+        el.style.fontFamily = '"SF Mono", "Fira Code", "Fira Mono", Menlo, Consolas, monospace';
+        el.style.letterSpacing = '0.05em';
+        el.setAttribute('data-encrypted', original);
+
+        var encrypted = '';
+        for (var i = 0; i < original.length; i++) {
+          if (original[i] === ' ') {
+            encrypted += ' ';
+          } else {
+            encrypted += PRINTABLE.charAt(Math.floor(Math.random() * PRINTABLE.length));
+          }
+        }
+        el.textContent = encrypted;
+
+        var total = original.length;
+        var delays = [];
+        for (var i = 0; i < total; i++) {
+          delays.push(Math.random() * 2000 + 1000);
+        }
+
+        var timers = [];
+        for (var i = 0; i < total; i++) {
+          var base = delays[i];
+          var c1 = base * 0.33;
+          var c2 = base * 0.66;
+          var reveal = base;
+
+          if (original[i] !== ' ') {
+            timers.push(setTimeout(function(charIdx) {
+              var current = el.textContent;
+              var before = current.substring(0, charIdx);
+              var after = current.substring(charIdx + 1);
+              el.textContent = before + PRINTABLE.charAt(Math.floor(Math.random() * PRINTABLE.length)) + after;
+            }, c1, i));
+
+            timers.push(setTimeout(function(charIdx) {
+              var current = el.textContent;
+              var before = current.substring(0, charIdx);
+              var after = current.substring(charIdx + 1);
+              el.textContent = before + PRINTABLE.charAt(Math.floor(Math.random() * PRINTABLE.length)) + after;
+            }, c2, i));
+          }
+
+          timers.push(setTimeout(function(charIdx) {
+            var txt = el.getAttribute('data-encrypted');
+            var current = el.textContent;
+            var before = current.substring(0, charIdx);
+            var after = current.substring(charIdx + 1);
+            el.textContent = before + txt.charAt(charIdx) + after;
+          }, reveal, i));
+        }
+      }
+
+      var targets = document.querySelectorAll(
+        'h1, h2, p:not([id="typing-name"]):not([class*="typing"]), ' +
+        '.timeline-desc, .writing-subtitle, .project-desc, ' +
+        '.cert-issuer, .hero-tagline, .hero-role, .hero-location'
+      );
+
+      var hasAnimated = new WeakSet();
+
+      var observer = new IntersectionObserver(function(entries) {
+        for (var i = 0; i < entries.length; i++) {
+          var entry = entries[i];
+          if (entry.isIntersecting && !hasAnimated.has(entry.target)) {
+            hasAnimated.add(entry.target);
+            decryptElement(entry.target);
+          }
+        }
+      }, { threshold: 0.3 });
+
+      for (var i = 0; i < targets.length; i++) {
+        observer.observe(targets[i]);
+      }
     })();
   </script>
 </body>
